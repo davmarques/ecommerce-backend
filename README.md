@@ -15,7 +15,6 @@ Na pasta `backend`, crie um arquivo `.env`:
 ```env
 DATABASE_URL="postgresql://usuario:senha@localhost:5432/ecommerce"
 DIRECT_URL="postgresql://usuario:senha@localhost:5432/ecommerce"
-AUTH_SECRET="troque-por-um-segredo-forte"
 PORT=4000
 ```
 
