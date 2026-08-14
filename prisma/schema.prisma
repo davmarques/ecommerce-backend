@@ -1,0 +1,268 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model StoreConfig {
+  id               String     @id @default(uuid())
+  name             String
+  domain           String     @unique
+  supportEmail     String
+  primaryColor     String     @default("#4A5D4E")
+  backgroundColor  String     @default("#FAF7F2")
+  textColor        String     @default("#2D2B2A")
+  secondaryColor   String     @default("#D4C5B9")
+  originZip        String
+  originStreet     String?
+  originNumber     String?
+  originDistrict   String?
+  originCity       String?
+  originState      String?
+  originCountry    String?    @default("BR")
+  melhorEnvioToken String?
+  mercadoPagoToken String?
+  mercadoPagoPublicKey String?
+  mercadoPagoWebhookUrl String?
+  mercadoPagoWebhookSecret String?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  categories       Category[]
+  orders           Order[]
+  products         Product[]
+  users            User[]
+  favorites        Favorite[]
+  crmDeals         CrmDeal[]
+  crmTasks         CrmTask[]
+  crmActivities    CrmActivity[]
+}
+
+model User {
+  id           String      @id @default(uuid())
+  name         String
+  email        String      @unique
+  passwordHash String
+  cpf          String?
+  phone        String?
+  role         Role        @default(CLIENT)
+  tenantId     String
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  addresses    Address[]
+  favorites    Favorite[]
+  orders       Order[]
+  crmTasks     CrmTask[]
+  crmActivities CrmActivity[]
+  tenant       StoreConfig @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model Address {
+  id           String  @id @default(uuid())
+  zipCode      String
+  street       String
+  number       String
+  complement   String?
+  neighborhood String
+  city         String
+  state        String
+  isDefault    Boolean @default(false)
+  userId       String
+  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Category {
+  id        String      @id @default(uuid())
+  name      String
+  slug      String
+  tenantId  String
+  createdAt DateTime    @default(now())
+  tenant    StoreConfig @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  products  Product[]
+  crmTasks  CrmTask[]
+
+  @@unique([slug, tenantId])
+}
+
+model Product {
+  id          String           @id @default(uuid())
+  name        String
+  slug        String
+  description String
+  price       Float
+  isFeatured  Boolean          @default(false)
+  weight      Float
+  height      Int
+  width       Int
+  length      Int
+  tenantId    String
+  categoryId  String
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  category    Category         @relation(fields: [categoryId], references: [id])
+  favorites   Favorite[]
+  tenant      StoreConfig      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  images      ProductImage[]
+  variants    ProductVariant[]
+  crmDeals    CrmDeal[]
+  crmTasks    CrmTask[]
+
+  @@unique([slug, tenantId])
+}
+
+model Favorite {
+  id        String      @id @default(uuid())
+  userId    String
+  productId String
+  tenantId  String
+  createdAt DateTime    @default(now())
+  product   Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tenant    StoreConfig @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+}
+
+model CrmDeal {
+  id          String      @id @default(uuid())
+  tenantId    String
+  productId   String      @unique
+  stage       CrmDealStage @default(LEAD)
+  probability Int         @default(25)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  product     Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tenant      StoreConfig @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model CrmTask {
+  id           String          @id @default(uuid())
+  tenantId     String
+  title        String
+  type         CrmTaskType
+  priority     CrmTaskPriority @default(MEDIUM)
+  dueLabel     String
+  isDone       Boolean         @default(false)
+  assigneeName String
+  createdById  String
+  productId    String?
+  categoryId   String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  category     Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  createdBy    User            @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  product      Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
+  tenant       StoreConfig     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model CrmActivity {
+  id        String          @id @default(uuid())
+  tenantId  String
+  actorId   String?
+  actorName String
+  kind      CrmActivityKind
+  action    String
+  target    String
+  createdAt DateTime        @default(now())
+  actor     User?           @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  tenant    StoreConfig     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model ProductImage {
+  id        String  @id @default(uuid())
+  url       String
+  altText   String?
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model ProductVariant {
+  id         String      @id @default(uuid())
+  sku        String      @unique
+  color      String?
+  size       String
+  stock      Int         @default(0)
+  productId  String
+  orderItems OrderItem[]
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model Order {
+  id              String      @id @default(uuid())
+  orderNumber     Int         @default(autoincrement())
+  status          OrderStatus @default(PENDING)
+  totalAmount     Float
+  tenantId        String
+  userId          String?
+  customerName    String
+  customerEmail   String
+  customerCpf     String
+  customerPhone   String
+  shippingZip     String
+  shippingAddress String
+  shippingCity    String
+  shippingState   String
+  shippingService String
+  shippingCost    Float
+  trackingCode    String?
+  paymentId       String?
+  paymentMethod   String      @default("PIX")
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  tenant          StoreConfig @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user            User?       @relation(fields: [userId], references: [id])
+  items           OrderItem[]
+}
+
+model OrderItem {
+  id        String         @id @default(uuid())
+  quantity  Int
+  price     Float
+  orderId   String
+  variantId String
+  order     Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variant   ProductVariant @relation(fields: [variantId], references: [id])
+}
+
+enum Role {
+  CLIENT
+  ADMIN
+  SUPERADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  CANCELED
+  SHIPPED
+  DELIVERED
+}
+
+enum CrmDealStage {
+  LEAD
+  QUALIFIED
+  PROPOSAL
+  NEGOTIATION
+  WON
+}
+
+enum CrmTaskType {
+  CALL
+  EMAIL
+  MEETING
+  FOLLOW_UP
+}
+
+enum CrmTaskPriority {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum CrmActivityKind {
+  DEAL
+  TASK
+  CONTACT
+  NOTE
+}
